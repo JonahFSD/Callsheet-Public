@@ -1,106 +1,43 @@
-# Stop forgetting your best customers.
+# CallSheet
 
-CallSheet is a CRM for 1-3 truck service contractors that ranks customers by who needs attention most. Open the app, see the list, tap to call. That's it.
+### A bilingual CRM for small service contractors
 
-[callsheet.cv](https://callsheet.cv)
+CallSheet helps a contractor decide whom to call, record what happened, send an estimate and schedule the next follow-up. It brings those steps into one customer history instead of leaving them across a phone, a spreadsheet and a calendar.
 
----
+**Public engineering case study. The application implementation is private; this repository contains documentation, not runnable product source.**
 
-## What It Does
+Co-built by **Jonah Elliott and Evan Pursley**. CallSheet served **two paying customers**, as reported by cofounder Jonah Elliott. This is a historical product outcome, not a claim about current subscribers or revenue.
 
-**Priority Scoring** -- AI ranks every customer by urgency and value. The one who needs you most is always first.
+## The product loop
 
-**One-Tap Calls** -- Call, log the outcome, schedule the next follow-up. One flow.
-
-**SMS Estimates** -- Create a quote, tap send. Customer gets a branded estimate page via text.
-
-**Google Calendar Sync** -- Schedule a callback and it lands on your calendar automatically.
-
-**Performance Dashboard** -- Track call volume, conversion rates, and revenue booked.
-
-**Team Management** -- Invite your crew, assign roles, see who called whom.
-
-Also includes CSV import, customer notes, search and filtering, dark mode, and English/Spanish localization.
-
----
-
-## Progress
-
-- Live product with paying customers
-- 27K+ lines of production code across 178 commits
-- First commit: January 17, 2026
-- Open-source contributor to Gymnasium (Farama Foundation) and browser-use
-- 1517 Fund community member
-
----
-
-## Tech Stack
-
-| Layer | Tech |
-|-------|------|
-| Frontend | React 18, Vite |
-| Backend | FastAPI, Python 3.11 |
-| Database | PostgreSQL (prod), SQLite (dev) |
-| Auth | Clerk (JWT/JWKS) |
-| Payments | Stripe |
-| SMS | Twilio |
-| Calendar | Google Calendar API |
-| Analytics | PostHog |
-| Email | Resend |
-| Hosting | Vercel (frontend), Railway (backend) |
-
----
-
-## Architecture
-
-```
-backend/app/
-├── adapters/
-│   ├── driving/api/       → Route handlers (thin: parse → service → respond)
-│   └── driven/            → Concrete integrations
-│       ├── database/      → SQLAlchemy ORM, repositories
-│       ├── stripe/        → Payment provider
-│       ├── google/        → Calendar + Contacts OAuth
-│       ├── twilio/        → SMS delivery
-│       ├── clerk/         → Auth provider
-│       └── email/         → Transactional email
-├── domain/                → Business entities & exceptions
-├── ports/                 → Abstract interfaces (repository contracts)
-└── services/              → All business logic (constructor-injected deps)
+```mermaid
+flowchart LR
+    History[Customer and service history] --> Priority[Prioritized follow-up list]
+    Priority --> Call[Call and record outcome]
+    Call --> Estimate[Send an estimate]
+    Call --> Schedule[Schedule next contact]
+    Estimate --> History
+    Schedule --> History
 ```
 
-Hexagonal architecture with dependency injection via FastAPI's `Depends()`. Routes are thin -- they parse input, call a service, and map to HTTP responses. All business logic lives in services. DB access goes through repository ports. External integrations are swappable adapters. Multi-tenant -- every query scopes to `account_id`.
+The implementation includes English/Spanish localization, customer notes, CSV import, team roles, subscription billing, Google Calendar integration and SMS estimates. Its priority ranking is a **deterministic business heuristic** over value, urgency, risk and opportunity. It is not a learned ranking model.
 
----
+## Engineering worth inspecting
 
-## AI Development Workflow
+- **Business workflows across providers.** React and FastAPI connect customer activity with PostgreSQL, Clerk, Stripe, Twilio and Google Calendar.
+- **Explicit estimate states.** Creating an estimate, submitting an SMS, viewing it and accepting it are distinct events. A provider accepting a message does not prove handset delivery.
+- **Account-scoped operations.** Authenticated identities resolve to a business account; repositories and services carry that scope into customer operations.
+- **A service layer around integrations.** Business operations sit behind HTTP handlers and use repository/provider interfaces, making provider failures and test substitutes explicit.
 
-CallSheet is developed using an autonomous AI-driven workflow. Task specifications are written as structured prompts (context, goal, files to modify, specific changes, constraints, verification steps). A bash harness spawns a fresh AI coding agent for each task, monitors progress via a shared PLAN.md checklist, and kills the process on completion to prevent context degradation. A second agent automatically audits every batch of changes against project conventions and task specs before anything gets committed.
+## Read the case study
 
-The system enforces constraints at the harness level, not the prompt level -- a fake git wrapper blocks all write operations, a process monitor prevents scope creep, and the filesystem serves as shared memory between iterations. This lets one person produce the engineering throughput of a small team with consistent code quality.
+| Document | What it explains |
+|---|---|
+| [Architecture](docs/architecture.md) | Components, data ownership and integration boundaries |
+| [Workflows](docs/workflows.md) | Synthetic follow-up example and estimate state diagram |
+| [Engineering decisions](docs/engineering-decisions.md) | Decisions visible in the implementation and their tradeoffs |
+| [Validation and status](docs/validation.md) | Evidence, test coverage topics and limits of this public artifact |
 
----
+Checked against an implementation snapshot on **September 21, 2026**. Examples are synthetic. The private test suite was not rerun to prepare these pages, and no current production session was exercised.
 
-## Scoring Algorithm
-
-Customers are scored 0-100 based on four weighted factors: revenue value (contract size and service history), service urgency (time since last contact, overdue thresholds), customer risk (contract expiration, churn signals), and outreach opportunity (seasonal patterns, estimate follow-ups). Scores map to red/amber/green urgency buckets with specific action recommendations.
-
----
-
-## Running Locally
-
-```bash
-# Full stack (Docker)
-make dev                # Starts postgres, redis, backend, frontend
-make dev-down           # Stop everything
-
-# Without Docker
-cd backend && pip install -r requirements.txt && uvicorn main:app --reload
-cd frontend && npm install && npm run dev
-```
-
-Frontend: `localhost:5173` | Backend: `localhost:8000` | API docs: `localhost:8000/docs`
-
----
-
-Built by Jonah Elliott and Evan Pursley.
+[Jonah's GitHub](https://github.com/JonahFSD) · [Cadmus](https://github.com/JonahFSD/Cadmus-Public) · [Kronos](https://github.com/JonahFSD/Kronos-Public) · [Arlis](https://github.com/JonahFSD/Arlis-Public)
